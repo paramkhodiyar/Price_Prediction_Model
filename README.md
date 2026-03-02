@@ -9,7 +9,11 @@ ValoraAI is a machine-learning-powered web application that predicts residential
 ## 🖥️ Live Demo
 
 Deployed on Render:  
+<<<<<<< HEAD
 👉 **[valoraai-price-predictor on Render](https://render.com)
+=======
+👉 **[valoraai-price-predictor on Render](https://render.com)**
+>>>>>>>
 
 ---
 
@@ -129,7 +133,6 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The app will be available at **http://localhost:8501**
 
 ---
 
@@ -180,12 +183,14 @@ Typography uses **Public Sans** from Google Fonts for a clean, professional look
 | Reported Accuracy | 94.2% |
 | Fallback | Linear heuristic (`area × ₹8,500 + beds × ₹5L`) |
 
----
-
-## 📝 License
-
-This project is proprietary to **MayaAI / ValoraAI**. All rights reserved © 2026.
 
 ---
+## 👥 Team Details
 
-*Built with ❤️ using Streamlit and scikit-learn — Powering smarter property decisions across India.*
+- Param Khodiyar – 2401020043  
+- Anugra Gupta – 2401010085  
+- Aditya Rao – 2401010036  
+- Adit Singh – 2401010027
+---
+
+
