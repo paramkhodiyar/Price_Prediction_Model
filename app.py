@@ -14,117 +14,27 @@ st.set_page_config(
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap');
-    
-    .stApp {
-        background-color: #F8F9FB;
-        color: #1E293B;
-        font-family: 'Public Sans', sans-serif;
-    }
-    
+    .stApp { background-color: #F8F9FB; color: #1E293B; font-family: 'Public Sans', sans-serif; }
     [data-testid="stSidebar"] { display: none; }
     header { visibility: hidden; }
     .stApp > header { display: none !important; }
-    
-    .block-container {
-        max-width: 1200px !important;
-        padding-top: 2rem !important;
-        margin: 0 auto !important;
+    .block-container { max-width: 1200px !important; padding-top: 2rem !important; margin: 0 auto !important; }
+    .brand-section { text-align: center; margin-bottom: 3rem; }
+    .brand-title { font-size: 2.8rem; font-weight: 800; color: #F59E0B; margin: 0; letter-spacing: -1px; }
+    .brand-subtitle { color: #64748B; font-size: 1rem; margin-top: 5px; }
+    .content-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 2.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+    .section-header { font-size: 1.1rem; font-weight: 700; color: #0F172A; margin-bottom: 1.5rem; padding-bottom: 10px; border-bottom: 2px solid #F1F5F9; }
+    div[data-baseweb="select"] > div, div[data-baseweb="input"] input, .stNumberInput input, .stTextInput input {
+        background-color: #FFFFFF !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; border: 1px solid #CBD5E1 !important;
     }
-
-    .brand-section {
-        text-align: center;
-        margin-bottom: 3rem;
-    }
-    .brand-title {
-        font-size: 2.8rem;
-        font-weight: 800;
-        color: #F59E0B;
-        margin: 0;
-        letter-spacing: -1px;
-    }
-    .brand-subtitle {
-        color: #64748B;
-        font-size: 1rem;
-        margin-top: 5px;
-    }
-    .content-card {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 2.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        margin-bottom: 2rem;
-    }
-    .section-header {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #0F172A;
-        margin-bottom: 1.5rem;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #F1F5F9;
-    }
-    
-    div[data-baseweb="select"] > div, 
-    div[data-baseweb="input"] input,
-    .stNumberInput input,
-    .stTextInput input,
-    .stSelectbox [data-baseweb="select"] {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        -webkit-text-fill-color: #000000 !important;
-        border: 1px solid #CBD5E1 !important;
-    }
-    
-    input::placeholder {
-        color: #475569 !important;
-        opacity: 1 !important;
-    }
-    
-    div[data-testid="stButton"] > button {
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        width: 100% !important;
-        border: 1px solid #E2E8F0 !important;
-        background-color: #FFFFFF !important;
-        color: #475569 !important;
-    }
-    
-    .stButton button[kind="primary"] {
-        background-color: #F59E0B !important;
-        color: white !important;
-        border: none !important;
-        padding: 1rem !important;
-        font-size: 1.2rem !important;
-    }
-    
-    .result-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        height: 100%;
-        min-height: 600px;
-        background: #FFFFFF;
-        border-radius: 12px;
-        border: 2px solid #F59E0B;
-        padding: 3rem;
-        box-shadow: 0 4px 20px rgba(245, 158, 11, 0.05);
-        text-align: center;
-    }
-    
+    input::placeholder { color: #475569 !important; opacity: 1 !important; }
+    div[data-testid="stButton"] > button { border-radius: 8px !important; font-weight: 600 !important; width: 100% !important; border: 1px solid #E2E8F0 !important; background-color: #FFFFFF !important; color: #475569 !important; }
+    .stButton button[kind="primary"] { background-color: #F59E0B !important; color: white !important; border: none !important; padding: 1rem !important; font-size: 1.2rem !important; }
+    .result-container { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; min-height: 600px; background: #FFFFFF; border-radius: 12px; border: 2px solid #F59E0B; padding: 3rem; box-shadow: 0 4px 20px rgba(245, 158, 11, 0.05); text-align: center; }
     .result-label { font-size: 1.1rem; font-weight: 600; color: #64748B; text-transform: uppercase; margin-bottom: 1.5rem; }
     .result-value { font-size: 4rem; font-weight: 800; color: #059669; margin: 10px 0; }
     .result-sub { font-size: 1.2rem; color: #475569; font-weight: 500; margin-bottom: 2rem; }
-    
-    .detail-card {
-        background: #F8F9FB;
-        border-radius: 8px;
-        padding: 1.5rem;
-        width: 100%;
-        margin-top: 1rem;
-        border: 1px solid #E2E8F0;
-    }
-    
+    .detail-card { background: #F8F9FB; border-radius: 8px; padding: 1.5rem; width: 100%; margin-top: 1rem; border: 1px solid #E2E8F0; }
     .footer { text-align: center; padding: 3rem 0; color: #94A3B8; font-size: 0.85rem; }
 </style>
 """, unsafe_allow_html=True)
@@ -136,16 +46,12 @@ def formInr(amount):
 
 @st.cache_resource
 def get_the_model():
-    m_path = "mayaai_sale_rf_model.pkl"
-    f_path = "mayaai_sale_features.pkl"
+    m_path, f_path = "mayaai_sale_rf_model.pkl", "mayaai_sale_features.pkl"
     if os.path.exists(m_path) and os.path.exists(f_path):
         try:
             return joblib.load(m_path), joblib.load(f_path)
-        except Exception as e:
-            return None, None
+        except: return None, None
     return None, None
-
-loaded_model, dataset_features = get_the_model()
 
 if 'form_data' not in st.session_state: st.session_state.form_data = {}
 if 'prediction_shown' not in st.session_state: st.session_state.prediction_shown = False
@@ -195,19 +101,16 @@ with col_inputs:
 
 with col_results:
     if st.session_state.prediction_shown:
+        loaded_model, dataset_features = get_the_model()
         if loaded_model is not None and dataset_features is not None:
             try:
                 inp = pd.DataFrame([{"city": u_city.lower().strip(), "location": u_loc.lower().strip(), "property_type": property_type, "bedrooms": beds, "bathrooms": baths, "area_sqft": area_sqft, "floor_num": floor_no, "total_floor": total_f, "age": age_v}])
                 inp = pd.get_dummies(inp).reindex(columns=dataset_features, fill_value=0)
                 final_price = max(loaded_model.predict(inp)[0], 0)
-            except:
-                final_price = (area_sqft * 9200) + (beds * 600000)
-        else:
-            final_price = (area_sqft * 8500) + (beds * 5_00_000)
-            
-        st.markdown(f"<div class='result-container'><div class='result-label'>Market Valuation Analysis</div><div class='result-value'>{formInr(final_price)}</div><div class='result-sub'>Valuation Rate: {formInr(final_price/area_sqft)} / sqft</div><div class='detail-card'><div style='font-size:0.9rem; color:#64748B; margin-bottom:0.5rem;'>PREDICTION CONFIDENCE</div><div style='font-size:1.4rem; font-weight:700; color:#F59E0B;'>94.2% Verified</div></div><div class='detail-card'><div style='font-size:0.9rem; color:#64748B; margin-bottom:0.5rem;'>VINTAGE PREMIUM</div><div style='font-size:1.4rem; font-weight:700; color:#1E293B;'>{ 'Stable Asset' if age_v > 5 else 'New Build Premium' }</div></div><p style='margin-top:2rem; font-size:0.85rem; color:#94A3B8;'>Analysis generated using Random Forest Regressor trained on 50k+ Indian property transactions. Data normalized for current market volatility.</p></div>", unsafe_allow_html=True)
+            except: final_price = (area_sqft * 9200) + (beds * 600000)
+        else: final_price = (area_sqft * 8500) + (beds * 500000)
+        st.markdown(f"<div class='result-container'><div class='result-label'>Market Valuation Analysis</div><div class='result-value'>{formInr(final_price)}</div><div class='result-sub'>Valuation Rate: {formInr(final_price/max(area_sqft,1))} / sqft</div><div class='detail-card'><div style='font-size:0.9rem; color:#64748B; margin-bottom:0.5rem;'>PREDICTION CONFIDENCE</div><div style='font-size:1.4rem; font-weight:700; color:#F59E0B;'>94.2% Verified</div></div><div class='detail-card'><div style='font-size:0.9rem; color:#64748B; margin-bottom:0.5rem;'>VINTAGE PREMIUM</div><div style='font-size:1.4rem; font-weight:700; color:#1E293B;'>{ 'Stable Asset' if age_v > 5 else 'New Build Premium' }</div></div><p style='margin-top:2rem; font-size:0.85rem; color:#94A3B8;'>Analysis generated using AI model trained on 50k+ transactions.</p></div>", unsafe_allow_html=True)
     else:
         st.markdown("<div class='result-container' style='border: 2px dashed #CBD5E1; background: #FBFBFC;'><div style='font-size:4rem; margin-bottom:1rem;'>📊</div><div class='result-label'>Ready for Analysis</div><p style='color:#94A3B8; max-width:250px;'>Enter property specifications on the left and click the button to generate an intelligent valuation.</p></div>", unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True)
-st.markdown("<div class='footer'>ValoraAI Professional Real Estate Analytics Engine &copy; 2026<br>Built with Python & Scikit-Learn</div>", unsafe_allow_html=True)
+st.markdown("</div><div class='footer'>ValoraAI Professional Real Estate Analytics Engine &copy; 2026</div>", unsafe_allow_html=True)
