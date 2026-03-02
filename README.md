@@ -8,13 +8,7 @@ ValoraAI is a machine-learning-powered web application that predicts residential
 
 ## 🖥️ Live Demo
 
-Deployed on Render:  
-<<<<<<< HEAD
-👉 **[valoraai-price-predictor on Render](https://render.com)
-=======
-👉 **[valoraai-price-predictor on Render](https://render.com)**
->>>>>>>
-
+Deployed on Render:👉 **[valoraai-price-predictor on Render](https://render.com)
 ---
 
 ## ✨ Features
