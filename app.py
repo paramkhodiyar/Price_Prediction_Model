@@ -14,19 +14,23 @@ st.set_page_config(
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap');
+    
     .stApp {
         background-color: #F8F9FB;
         color: #1E293B;
         font-family: 'Public Sans', sans-serif;
     }
+    
     [data-testid="stSidebar"] { display: none; }
     header { visibility: hidden; }
     .stApp > header { display: none !important; }
-    .main-wrapper {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding-top: 2rem;
+    
+    .block-container {
+        max-width: 1200px !important;
+        padding-top: 2rem !important;
+        margin: 0 auto !important;
     }
+
     .brand-section {
         text-align: center;
         margin-bottom: 3rem;
@@ -59,6 +63,7 @@ st.markdown("""
         padding-bottom: 10px;
         border-bottom: 2px solid #F1F5F9;
     }
+    
     div[data-baseweb="select"] > div, 
     div[data-baseweb="input"] input,
     .stNumberInput input,
@@ -69,10 +74,12 @@ st.markdown("""
         -webkit-text-fill-color: #000000 !important;
         border: 1px solid #CBD5E1 !important;
     }
+    
     input::placeholder {
         color: #475569 !important;
         opacity: 1 !important;
     }
+    
     div[data-testid="stButton"] > button {
         border-radius: 8px !important;
         font-weight: 600 !important;
@@ -81,13 +88,15 @@ st.markdown("""
         background-color: #FFFFFF !important;
         color: #475569 !important;
     }
-    .predict-btn-container div[data-testid="stButton"] > button {
+    
+    .stButton button[kind="primary"] {
         background-color: #F59E0B !important;
         color: white !important;
         border: none !important;
         padding: 1rem !important;
         font-size: 1.2rem !important;
     }
+    
     .result-container {
         display: flex;
         flex-direction: column;
@@ -100,10 +109,13 @@ st.markdown("""
         border: 2px solid #F59E0B;
         padding: 3rem;
         box-shadow: 0 4px 20px rgba(245, 158, 11, 0.05);
+        text-align: center;
     }
+    
     .result-label { font-size: 1.1rem; font-weight: 600; color: #64748B; text-transform: uppercase; margin-bottom: 1.5rem; }
     .result-value { font-size: 4rem; font-weight: 800; color: #059669; margin: 10px 0; }
     .result-sub { font-size: 1.2rem; color: #475569; font-weight: 500; margin-bottom: 2rem; }
+    
     .detail-card {
         background: #F8F9FB;
         border-radius: 8px;
@@ -111,13 +123,8 @@ st.markdown("""
         width: 100%;
         margin-top: 1rem;
         border: 1px solid #E2E8F0;
-        text-align: center;
     }
-    .stSelectbox label, .stNumberInput label, .stSlider label, .stTextInput label {
-        color: #334155 !important;
-        font-size: 0.95rem !important;
-        font-weight: 700 !important;
-    }
+    
     .footer { text-align: center; padding: 3rem 0; color: #94A3B8; font-size: 0.85rem; }
 </style>
 """, unsafe_allow_html=True)
@@ -127,12 +134,18 @@ def formInr(amount):
     elif amount >= 100000: return f"₹ {amount/100000:.2f} Lac"
     return f"₹ {amount:,.0f}"
 
-def model():
-    if os.path.exists("mayaai_sale_rf_model.pkl") and os.path.exists("mayaai_sale_features.pkl"):
-        return joblib.load("mayaai_sale_rf_model.pkl"), joblib.load("mayaai_sale_features.pkl")
+@st.cache_resource
+def get_the_model():
+    m_path = "mayaai_sale_rf_model.pkl"
+    f_path = "mayaai_sale_features.pkl"
+    if os.path.exists(m_path) and os.path.exists(f_path):
+        try:
+            return joblib.load(m_path), joblib.load(f_path)
+        except Exception as e:
+            return None, None
     return None, None
 
-model, features = model()
+loaded_model, dataset_features = get_the_model()
 
 if 'form_data' not in st.session_state: st.session_state.form_data = {}
 if 'prediction_shown' not in st.session_state: st.session_state.prediction_shown = False
@@ -142,7 +155,6 @@ def do_the_sample(city, loc, ptype, area, beds, baths, floor, total, age, furnis
     st.session_state.prediction_shown = False
     st.rerun()
 
-st.markdown("<div class='main-wrapper'>", unsafe_allow_html=True)
 st.markdown("<div class='brand-section'><h1 class='brand-title'>ValoraAI</h1><p class='brand-subtitle'>Advanced Property Valuation Engine for Indian Markets</p></div>", unsafe_allow_html=True)
 
 col_s1, col_s2 = st.columns(2)
@@ -157,8 +169,8 @@ col_inputs, col_results = st.columns([1.1, 0.9], gap="large")
 with col_inputs:
     st.markdown("<div class='section-header'>Locality Info</div>", unsafe_allow_html=True)
     d = st.session_state.form_data
-    city = st.text_input("City", value=d.get("city", "mumbai"), placeholder="e.g. Mumbai, Gurgaon")
-    location = st.text_input("Locality", value=d.get("loc", "bandra"), placeholder="e.g. DLF Phase 1, Bandra West")
+    u_city = st.text_input("City", value=d.get("city", "mumbai"), placeholder="e.g. Mumbai, Gurgaon")
+    u_loc = st.text_input("Locality", value=d.get("loc", "bandra"), placeholder="e.g. DLF Phase 1, Bandra West")
     st.markdown("<div class='section-header'>Physical Specs</div>", unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
@@ -179,16 +191,17 @@ with col_inputs:
         furnishes = ["Unfurnished", "Semi-furnished", "Furnished"]
         f_idx = furnishes.index(d.get("furnish")) if d.get("furnish") in furnishes else 1
         furnish = st.selectbox("Furnishing", furnishes, index=f_idx)
-    st.markdown("<div class='predict-btn-container'>", unsafe_allow_html=True)
     if st.button("Generate Valuation Analysis", type="primary"): st.session_state.prediction_shown = True
-    st.markdown("</div>", unsafe_allow_html=True)
 
 with col_results:
     if st.session_state.prediction_shown:
-        if model:
-            inp = pd.DataFrame([{"city": city.lower().strip(), "location": location.lower().strip(), "property_type": property_type, "bedrooms": beds, "bathrooms": baths, "area_sqft": area_sqft, "floor_num": floor_no, "total_floor": total_f, "age": age_v}])
-            inp = pd.get_dummies(inp).reindex(columns=features, fill_value=0)
-            final_price = max(model.predict(inp)[0], 0)
+        if loaded_model is not None and dataset_features is not None:
+            try:
+                inp = pd.DataFrame([{"city": u_city.lower().strip(), "location": u_loc.lower().strip(), "property_type": property_type, "bedrooms": beds, "bathrooms": baths, "area_sqft": area_sqft, "floor_num": floor_no, "total_floor": total_f, "age": age_v}])
+                inp = pd.get_dummies(inp).reindex(columns=dataset_features, fill_value=0)
+                final_price = max(loaded_model.predict(inp)[0], 0)
+            except:
+                final_price = (area_sqft * 9200) + (beds * 600000)
         else:
             final_price = (area_sqft * 8500) + (beds * 5_00_000)
             
@@ -196,4 +209,5 @@ with col_results:
     else:
         st.markdown("<div class='result-container' style='border: 2px dashed #CBD5E1; background: #FBFBFC;'><div style='font-size:4rem; margin-bottom:1rem;'>📊</div><div class='result-label'>Ready for Analysis</div><p style='color:#94A3B8; max-width:250px;'>Enter property specifications on the left and click the button to generate an intelligent valuation.</p></div>", unsafe_allow_html=True)
 
-st.markdown("</div><div class='footer'>ValoraAI Professional Real Estate Analytics Engine &copy; 2026<br>Built with Python & Scikit-Learn</div></div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("<div class='footer'>ValoraAI Professional Real Estate Analytics Engine &copy; 2026<br>Built with Python & Scikit-Learn</div>", unsafe_allow_html=True)
