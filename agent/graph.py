@@ -13,6 +13,25 @@ def analyze_property(state: AgentState) -> AgentState:
     return state
 
 def fetch_prediction(state: AgentState) -> AgentState:
+    import os
+    import pickle
+    details = state.get("property_details", {})
+    try:
+        model_path = os.path.join(os.path.dirname(__file__), "..", "models", "mayaai_sale_rf_model.pkl")
+        with open(model_path, "rb") as f:
+            model = pickle.load(f)
+        
+        # Try standard array or dict passing
+        try:
+            pred = model.predict([list(details.values())])
+        except:
+            pred = model.predict([details])
+            
+        if pred is not None and len(pred) > 0:
+            state["prediction"] = float(pred[0])
+    except Exception:
+        # Silent fallback to current state prediction if model fails or isn't built yet
+        pass
     return state
 
 def generate_advice(state: AgentState) -> AgentState:
@@ -20,61 +39,67 @@ def generate_advice(state: AgentState) -> AgentState:
     prediction = state.get("prediction", 0)
 
     prompt = f"""
-You are evaluating a real estate investment opportunity.
+Analyze the following Indian real estate investment opportunity.
 
-PROPERTY DATA:
+INPUT DATA:
+Property Details:
 {details}
 
-ESTIMATED MARKET VALUE:
+Predicted Market Value:
 ₹{prediction:,.2f}
 
 TASK:
-Analyze this property as a senior real estate investment advisor.
+Evaluate this property strictly as an Indian real estate investment advisor.
 
-You must evaluate based on:
-1. Property condition and physical quality
-2. Location attractiveness and demand potential
-3. Current market trend implications
-4. Estimated value vs investment attractiveness
-5. Risk factors for buyer/investor
+DECISION RULES:
+- BUY → If property shows strong appreciation/investment potential, favorable market trend, and manageable risk.
+- HOLD → If property appears stable/moderately valuable but lacks strong upside.
+- SELL → If property appears overvalued, risky, depreciating, or poor investment.
 
-INSTRUCTIONS:
-- Determine whether the recommendation is BUY, HOLD, or SELL.
-- Justify your recommendation with concise financial and strategic reasoning.
-- Mention realistic market/investment/legal considerations where relevant.
-- Be practical and analytical, not generic.
-- Avoid speculation beyond provided data.
-- Do NOT mention lack of information.
-- Assume all provided data is accurate.
+RISK RULES:
+- Low → Strong fundamentals, low downside, positive outlook.
+- Medium → Balanced opportunity with manageable uncertainty.
+- High → Significant uncertainty, downside, depreciation, or investment concern.
 
-OUTPUT FORMAT STRICTLY:
+ANALYSIS FACTORS:
+Consider ALL of the following:
+1. Location desirability
+2. Property type attractiveness
+3. Size/value proposition
+4. Physical condition
+5. Market trend outlook
+6. Risk/reward potential
 
-VERDICT: [BUY/HOLD/SELL]
+OUTPUT REQUIREMENTS:
+- Respond ONLY with raw valid JSON.
+- No markdown.
+- No extra commentary.
+- No text outside JSON.
+- Ensure all fields are present.
+- Keep reasoning concise but professional.
 
-REASONING:
-1. [Financial / valuation reasoning]
-2. [Market / location reasoning]
-3. [Risk / strategic reasoning]
-
-SUMMARY:
-[One sentence final investor recommendation.]
+REQUIRED JSON FORMAT:
+{{
+  "verdict": "BUY/HOLD/SELL",
+  "reason": "2-3 sentence professional investment reasoning",
+  "risk": "LOW/MEDIUM/HIGH",
+  "summary": "1 sentence investor recommendation",
+  "disclaimer": "This is AI-generated analysis and not financial advice."
+}}
 """
 
     messages = [
         SystemMessage(
             content="""
-You are Valora, an elite real estate valuation and investment strategist with expertise in:
-- Property investment analysis
-- Financial risk assessment
-- Market trend forecasting
-- Real estate portfolio strategy
+You are Valora, an elite Indian real estate investment analysis engine.
 
-Your responses must be:
-- Highly professional
-- Data-driven
-- Concise but insightful
-- Structured exactly as requested
-- Free from hallucinations or unnecessary filler.
+RULES:
+- Always return STRICT valid JSON only.
+- Never wrap response in markdown/code blocks.
+- Never include explanation outside JSON.
+- Follow decision rules exactly.
+- Base reasoning only on provided input.
+- Maintain institutional/professional tone.
 """
         ),
         HumanMessage(content=prompt)
@@ -104,6 +129,7 @@ workflow.add_edge("format_report", END)
 valora_app = workflow.compile()
 
 # if __name__ == "__main__":
+#     import json
 
 #     test_cases = [
 #         {
@@ -118,7 +144,6 @@ valora_app = workflow.compile()
 #             "advice": "",
 #             "report": ""
 #         },
-
 #         {
 #             "property_details": {
 #                 "location": "Delhi",
@@ -131,7 +156,6 @@ valora_app = workflow.compile()
 #             "advice": "",
 #             "report": ""
 #         },
-
 #         {
 #             "property_details": {
 #                 "location": "Bangalore",
@@ -143,32 +167,29 @@ valora_app = workflow.compile()
 #             "prediction": 45000000.0,
 #             "advice": "",
 #             "report": ""
-#         },
-
-#         {
-#             "property_details": {
-#                 "location": "Pune",
-#                 "type": "1BHK",
-#                 "size_sqft": 500,
-#                 "condition": "average",
-#                 "current_market_trend": "depreciation"
-#             },
-#             "prediction": 6000000.0,
-#             "advice": "",
-#             "report": ""
 #         }
 #     ]
 
-
 #     for idx, test_case in enumerate(test_cases, start=1):
 #         print(f"\n{'='*50}")
-#         print(f"Running Test Case {idx}")
+#         print(f"Running Test Case {idx}: {test_case['property_details']['location']}")
 #         print(f"{'='*50}")
 
 #         result = valora_app.invoke(test_case)
 
-#         print("\nGenerated Advice:\n")
-#         print(result.get("advice", "No advice generated."))
+#         # Force parse json and prettify
+#         raw_advice = result.get("advice", "").strip()
+#         if raw_advice.startswith("```json"):
+#             raw_advice = raw_advice[7:-3].strip()
+#         elif raw_advice.startswith("```"):
+#             raw_advice = raw_advice[3:-3].strip()
 
-#         print("\nGenerated Report:\n")
-#         print(result.get("report", "No report generated."))
+#         try:
+#             parsed = json.loads(raw_advice)
+#             print("\nGenerated Advice (Valid JSON):\n")
+#             print(json.dumps(parsed, indent=2))
+#         except json.JSONDecodeError:
+#             print("\nGenerated Advice (Failed to parse JSON):\n")
+#             print(raw_advice)
+
+
