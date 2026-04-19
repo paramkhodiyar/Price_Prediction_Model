@@ -1,2 +1,5 @@
 venv
 .env
+rag_store/
+__pycache__/
+*.pyc
