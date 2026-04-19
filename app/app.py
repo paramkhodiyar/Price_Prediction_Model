@@ -214,8 +214,8 @@ def page_ml_model():
     with col_inputs:
         st.markdown("<div class='section-header'>Locality Info</div>", unsafe_allow_html=True)
         d = st.session_state.form_data
-        u_city = st.text_input("City",     value=d.get("city", "mumbai"), placeholder="e.g. mumbai, gurgaon, hyderabad")
-        u_loc  = st.text_input("Locality", value=d.get("loc",  "bandra west"), placeholder="e.g. bandra west, dlf phase 1, koramangala")
+        u_city = st.text_input("City",     value=d.get("city", "mumbai"), placeholder="e.g. mumbai, gurgaon, hyderabad", key="city_input")
+        u_loc  = st.text_input("Locality", value=d.get("loc",  "bandra west"), placeholder="e.g. bandra west, dlf phase 1, koramangala", key="loc_input")
 
         st.markdown("<div class='section-header'>Physical Specs</div>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
