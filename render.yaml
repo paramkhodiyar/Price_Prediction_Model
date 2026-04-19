@@ -17,10 +17,10 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: GROQ_API_KEY
-        sync: false          # Set this as a secret in the Render dashboard
+        sync: false          
       - key: CHAT_API_URL
-        value: ""            # Set to Param's backend URL when deployed (e.g. https://chat-api.onrender.com/chat)
-      - key: OMP_NUM_THREADS # Limits threading memory overhead for PyTorch & Scikit-Learn
+        value: ""            
+      - key: OMP_NUM_THREADS 
         value: "1"
       - key: MKL_NUM_THREADS
         value: "1"

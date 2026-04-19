@@ -116,13 +116,10 @@ Rules:
 """
 
     messages = [SystemMessage(content=system_content)]
-
-    # Replay recent conversation (skip HTML blobs — not useful as LLM context)
     for msg in history_before[-8:]:
         if msg["role"] == "user":
             messages.append(HumanMessage(content=msg["content"]))
         elif msg["role"] == "assistant" and not msg.get("is_html"):
-            # Truncate long bot replies so we don't overflow context
             messages.append(AIMessage(content=str(msg["content"])[:600]))
 
     messages.append(HumanMessage(content=user_message))
