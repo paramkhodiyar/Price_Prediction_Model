@@ -52,6 +52,7 @@ $PIP install --quiet \
   langgraph \
   langchain-groq \
   langchain-community \
+  langchain-huggingface \
   langchain-core \
   faiss-cpu \
   sentence-transformers

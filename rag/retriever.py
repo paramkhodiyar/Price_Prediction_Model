@@ -17,7 +17,7 @@ def _get_store():
     if _vectorstore is not None:
         return _vectorstore
 
-    from langchain_community.embeddings import HuggingFaceEmbeddings
+    from langchain_huggingface import HuggingFaceEmbeddings
     from langchain_community.vectorstores import FAISS
 
     embedder = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)

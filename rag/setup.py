@@ -202,7 +202,7 @@ def _csv_to_sentences(filepath: Path, city: str) -> list:
 
 
 def build_vector_store(silent: bool = False):
-    from langchain_community.embeddings import HuggingFaceEmbeddings
+    from langchain_huggingface import HuggingFaceEmbeddings
     from langchain_community.vectorstores import FAISS
 
     sentences = []
