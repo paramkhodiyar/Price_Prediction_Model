@@ -3,18 +3,25 @@ from langgraph.graph import StateGraph, START, END
 from agent.llm import llm
 from langchain_core.messages import SystemMessage, HumanMessage
 
+
 class AgentState(TypedDict):
     property_details: dict
     prediction: float
-    advice: str
-    report: str
+    market_context: str       # injected from RAG retriever
+    advice: str               # raw JSON from LLM
+    formatted_report: str     # final HTML report
+
 
 def analyze_property(state: AgentState) -> AgentState:
     return state
 
+
 def fetch_prediction(state: AgentState) -> AgentState:
-    import os
-    import pickle
+    """Use prediction already supplied by the app; fall back to RF model if missing."""
+    if state.get("prediction", 0) > 0:
+        return state  # prediction passed in from app.py — skip re-inference
+
+    import os, pickle
     details = state.get("property_details", {})
     try:
         model_path = os.path.join(os.path.dirname(__file__), "..", "models", "mayaai_sale_rf_model.pkl")
@@ -22,19 +29,32 @@ def fetch_prediction(state: AgentState) -> AgentState:
             model = pickle.load(f)
         try:
             pred = model.predict([list(details.values())])
-        except:
+        except Exception:
             pred = model.predict([details])
-            
         if pred is not None and len(pred) > 0:
             state["prediction"] = float(pred[0])
     except Exception:
-        # Silent fallback to current state prediction if model fails or isn't built yet
         pass
     return state
 
-def generate_advice(state: AgentState) -> AgentState:
+
+def retrieve_market_context(state: AgentState) -> AgentState:
+    """Fetch top-3 RAG results and store in state for the LLM prompt."""
+    from rag.retriever import get_market_context
+
     details = state.get("property_details", {})
-    prediction = state.get("prediction", 0)
+    city          = details.get("city", "")
+    property_type = details.get("property_type", "apartment")
+    bedrooms      = int(details.get("bedrooms", 2))
+
+    state["market_context"] = get_market_context(city, property_type, bedrooms)
+    return state
+
+
+def generate_advice(state: AgentState) -> AgentState:
+    details        = state.get("property_details", {})
+    prediction     = state.get("prediction", 0)
+    market_context = state.get("market_context", "")
 
     prompt = f"""
 Analyze the following Indian real estate investment opportunity.
@@ -46,40 +66,39 @@ Property Details:
 Predicted Market Value:
 ₹{prediction:,.2f}
 
+COMPARABLE MARKET DATA (from RAG retrieval):
+{market_context}
+
 TASK:
 Evaluate this property strictly as an Indian real estate investment advisor.
+Use the comparable market data above to ground your analysis in real market conditions.
 
 DECISION RULES:
-- BUY → If property shows strong appreciation/investment potential, favorable market trend, and manageable risk.
-- HOLD → If property appears stable/moderately valuable but lacks strong upside.
-- SELL → If property appears overvalued, risky, depreciating, or poor investment.
+- BUY  → Strong appreciation/investment potential, favorable market trend, manageable risk.
+- HOLD → Stable/moderately valuable but lacks strong upside or has moderate risk.
+- SELL → Overvalued, risky, depreciating, or poor investment.
 
 RISK RULES:
-- Low → Strong fundamentals, low downside, positive outlook.
-- Medium → Balanced opportunity with manageable uncertainty.
-- High → Significant uncertainty, downside, depreciation, or investment concern.
+- LOW    → Strong fundamentals, low downside, positive outlook.
+- MEDIUM → Balanced opportunity with manageable uncertainty.
+- HIGH   → Significant uncertainty, downside, depreciation, or investment concern.
 
 ANALYSIS FACTORS:
-Consider ALL of the following:
-1. Location desirability
-2. Property type attractiveness
-3. Size/value proposition
-4. Physical condition
-5. Market trend outlook
+1. Location desirability vs comparable market data
+2. Property type attractiveness in this micro-market
+3. Size/value proposition relative to comparable prices
+4. Physical condition (age, furnishing, floor)
+5. Market trend outlook for this city/locality
 6. Risk/reward potential
 
 OUTPUT REQUIREMENTS:
-- Respond ONLY with raw valid JSON.
-- No markdown.
-- No extra commentary.
-- No text outside JSON.
-- Ensure all fields are present.
-- Keep reasoning concise but professional.
+- Respond ONLY with raw valid JSON. No markdown. No extra text outside JSON.
+- Ensure all fields are present and concise.
 
 REQUIRED JSON FORMAT:
 {{
   "verdict": "BUY/HOLD/SELL",
-  "reason": "2-3 sentence professional investment reasoning",
+  "reason": "2-3 sentence professional investment reasoning referencing the market data",
   "risk": "LOW/MEDIUM/HIGH",
   "summary": "1 sentence investor recommendation",
   "disclaimer": "This is AI-generated analysis and not financial advice."
@@ -87,107 +106,56 @@ REQUIRED JSON FORMAT:
 """
 
     messages = [
-        SystemMessage(
-            content="""
-You are Valora, an elite Indian real estate investment analysis engine.
-
-RULES:
-- Always return STRICT valid JSON only.
-- Never wrap response in markdown/code blocks.
-- Never include explanation outside JSON.
-- Follow decision rules exactly.
-- Base reasoning only on provided input.
-- Maintain institutional/professional tone.
-"""
-        ),
-        HumanMessage(content=prompt)
+        SystemMessage(content=(
+            "You are Valora, an elite Indian real estate investment analysis engine. "
+            "Always return STRICT valid JSON only. Never wrap response in markdown or code blocks. "
+            "Never include explanation outside JSON. Maintain institutional/professional tone."
+        )),
+        HumanMessage(content=prompt),
     ]
 
     response = llm.invoke(messages)
-
     state["advice"] = response.content
+    return state
 
-    return state
+
 def format_report(state: AgentState) -> AgentState:
+    """Render the LLM JSON advice into a styled HTML report."""
+    from rag.report import format_report as render_html
+
+    advice         = state.get("advice", "{}")
+    market_context = state.get("market_context", "")
+
+    # Inject market_context into the report for display
+    import json
+    try:
+        raw = advice.strip()
+        if raw.startswith("```"):
+            parts = raw.split("```")
+            raw = parts[1][4:].strip() if parts[1].startswith("json") else parts[1].strip()
+        data = json.loads(raw)
+    except Exception:
+        data = {"verdict": "HOLD", "reason": advice, "risk": "MEDIUM",
+                "summary": "Analysis complete.", "disclaimer": "AI-generated, not financial advice."}
+
+    data["market_context"] = market_context
+    state["formatted_report"] = render_html(json.dumps(data))
     return state
+
 
 workflow = StateGraph(AgentState)
 
-workflow.add_node("analyze_property", analyze_property)
-workflow.add_node("fetch_prediction", fetch_prediction)
-workflow.add_node("generate_advice", generate_advice)
-workflow.add_node("format_report", format_report)
+workflow.add_node("analyze_property",      analyze_property)
+workflow.add_node("fetch_prediction",      fetch_prediction)
+workflow.add_node("retrieve_market_context", retrieve_market_context)
+workflow.add_node("generate_advice",       generate_advice)
+workflow.add_node("format_report",         format_report)
 
-workflow.add_edge(START, "analyze_property")
-workflow.add_edge("analyze_property", "fetch_prediction")
-workflow.add_edge("fetch_prediction", "generate_advice")
-workflow.add_edge("generate_advice", "format_report")
-workflow.add_edge("format_report", END)
+workflow.add_edge(START,                    "analyze_property")
+workflow.add_edge("analyze_property",       "fetch_prediction")
+workflow.add_edge("fetch_prediction",       "retrieve_market_context")
+workflow.add_edge("retrieve_market_context", "generate_advice")
+workflow.add_edge("generate_advice",        "format_report")
+workflow.add_edge("format_report",          END)
 
 valora_app = workflow.compile()
-
-# if __name__ == "__main__":
-#     import json
-
-#     test_cases = [
-#         {
-#             "property_details": {
-#                 "location": "Mumbai",
-#                 "type": "2BHK",
-#                 "size_sqft": 800,
-#                 "condition": "good",
-#                 "current_market_trend": "appreciation"
-#             },
-#             "prediction": 15000000.0,
-#             "advice": "",
-#             "report": ""
-#         },
-#         {
-#             "property_details": {
-#                 "location": "Delhi",
-#                 "type": "3BHK",
-#                 "size_sqft": 1200,
-#                 "condition": "excellent",
-#                 "current_market_trend": "stable"
-#             },
-#             "prediction": 22000000.0,
-#             "advice": "",
-#             "report": ""
-#         },
-#         {
-#             "property_details": {
-#                 "location": "Bangalore",
-#                 "type": "Villa",
-#                 "size_sqft": 2500,
-#                 "condition": "luxury",
-#                 "current_market_trend": "high appreciation"
-#             },
-#             "prediction": 45000000.0,
-#             "advice": "",
-#             "report": ""
-#         }
-#     ]
-
-#     for idx, test_case in enumerate(test_cases, start=1):
-#         print(f"\n{'='*50}")
-#         print(f"Running Test Case {idx}: {test_case['property_details']['location']}")
-#         print(f"{'='*50}")
-
-#         result = valora_app.invoke(test_case)
-
-#         # Force parse json and prettify
-#         raw_advice = result.get("advice", "").strip()
-#         if raw_advice.startswith("```json"):
-#             raw_advice = raw_advice[7:-3].strip()
-#         elif raw_advice.startswith("```"):
-#             raw_advice = raw_advice[3:-3].strip()
-
-#         try:
-#             parsed = json.loads(raw_advice)
-#             print("\nGenerated Advice (Valid JSON):\n")
-#             print(json.dumps(parsed, indent=2))
-#         except json.JSONDecodeError:
-#             print("\nGenerated Advice (Failed to parse JSON):\n")
-#             print(raw_advice)
-
-
