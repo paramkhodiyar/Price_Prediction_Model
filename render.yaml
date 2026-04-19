@@ -5,6 +5,8 @@ services:
     plan: free
     rootDir: .
     buildCommand: >
+      apt-get install -y git-lfs &&
+      git lfs install &&
       git lfs pull &&
       pip install -r deployment/requirements.txt &&
       python -m rag.setup
