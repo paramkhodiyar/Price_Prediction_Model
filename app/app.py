@@ -145,7 +145,7 @@ def get_the_model():
         m = os.path.join(base, "mayaai_sale_rf_model.pkl")
         f = os.path.join(base, "mayaai_sale_features.pkl")
         if os.path.exists(m) and os.path.exists(f):
-            try: return joblib.load(m), joblib.load(f)
+            try: return joblib.load(m, mmap_mode='r'), joblib.load(f)
             except Exception: continue
     return None, None
 

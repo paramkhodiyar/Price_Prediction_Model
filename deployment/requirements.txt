@@ -9,7 +9,4 @@ python-dotenv>=1.0.0
 langgraph
 langchain-groq
 langchain-community
-langchain-huggingface
 langchain-core
-faiss-cpu
-sentence-transformers
