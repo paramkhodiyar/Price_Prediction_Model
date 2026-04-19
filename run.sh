@@ -3,8 +3,12 @@
 # Usage: ./run.sh [port]
 # Requires Python 3.12 (falls back to 3.11, 3.10, 3.9)
 
-set -e
+set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
+
+if [ ! -f ".env" ]; then
+  echo "WARNING: .env file not found. Some API features (like Groq) may fail at runtime."
+fi
 
 PORT="${1:-8501}"
 VENV_DIR="./venv"
@@ -41,20 +45,11 @@ PIP="$VENV_DIR/bin/pip"
 PY="$VENV_DIR/bin/python"
 
 # ── Install / sync dependencies ───────────────────────────────────────────────
-echo "Syncing dependencies ..."
-$PIP install --quiet \
-  "streamlit>=1.36.0" \
-  "pandas==2.2.2" \
-  "numpy<2" \
-  "scikit-learn==1.6.1" \
-  "joblib==1.4.2" \
-  "python-dotenv>=1.0.0" \
-  langgraph \
-  langchain-groq \
-  langchain-community \
-  langchain-core \
-  faiss-cpu \
-  sentence-transformers
+echo "Upgrading pip, setuptools, and wheel..."
+$PIP install --quiet --upgrade pip setuptools wheel
+
+echo "Installing dependencies (this may take ~1-2 min first time)..."
+$PIP install --quiet -r deployment/requirements.txt
 
 # ── Pre-build FAISS vector store if not present ───────────────────────────────
 if [ ! -d "./rag_store" ]; then
@@ -72,4 +67,4 @@ echo ""
 $PY -m streamlit run app/app.py \
   --server.port "$PORT" \
   --server.headless false \
-  --server.address localhost
+  --server.address 0.0.0.0
