@@ -1,49 +1,73 @@
 #!/bin/bash
+# ValoraAI — local development launcher
+# Usage: ./run.sh [port]
+# Requires Python 3.12 (falls back to 3.11, 3.10, 3.9)
+
 set -e
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PORT="${1:-8501}"
+VENV_DIR="./venv"
 
-VENV_DIR="$SCRIPT_DIR/venv"
-PYTHON="python3.12"
+# ── Find a compatible Python (3.9–3.12; NOT 3.13/3.14 — protobuf breaks) ────
+find_python() {
+  for candidate in python3.12 python3.11 python3.10 python3.9; do
+    if command -v "$candidate" &>/dev/null; then
+      echo "$candidate"
+      return
+    fi
+  done
+  echo ""
+}
 
-# ── Create venv if it doesn't exist ────────────────────────────────────────
-if [ ! -d "$VENV_DIR" ]; then
-  echo "Creating virtual environment with $PYTHON ..."
+PYTHON=$(find_python)
+if [ -z "$PYTHON" ]; then
+  echo "ERROR: No compatible Python (3.9–3.12) found."
+  echo "Install Python 3.12 from https://www.python.org/downloads/"
+  exit 1
+fi
+
+echo "Using $PYTHON ($(${PYTHON} --version 2>&1))"
+
+# ── Create venv if missing ────────────────────────────────────────────────────
+if [ ! -f "$VENV_DIR/bin/python" ]; then
+  echo "Creating virtual environment ..."
   $PYTHON -m venv "$VENV_DIR"
 fi
 
 PIP="$VENV_DIR/bin/pip"
-STREAMLIT="$VENV_DIR/bin/python -m streamlit"
+PY="$VENV_DIR/bin/python"
 
-# ── Install / sync dependencies ─────────────────────────────────────────────
-echo "Checking dependencies ..."
+# ── Install / sync dependencies ───────────────────────────────────────────────
+echo "Syncing dependencies ..."
 $PIP install --quiet \
-  streamlit==1.35.0 \
-  pandas==2.2.2 \
+  "streamlit==1.35.0" \
+  "pandas==2.2.2" \
   "numpy<2" \
-  scikit-learn==1.6.1 \
-  joblib==1.4.2 \
+  "scikit-learn==1.6.1" \
+  "joblib==1.4.2" \
+  "python-dotenv>=1.0.0" \
   langgraph \
   langchain-groq \
   langchain-community \
   langchain-core \
-  python-dotenv \
   faiss-cpu \
   sentence-transformers
 
-# ── Pre-build RAG vector store if not already built ─────────────────────────
-if [ ! -d "$SCRIPT_DIR/rag_store" ]; then
-  echo "Building RAG vector store (first-time setup, ~20s) ..."
-  "$VENV_DIR/bin/python" -m rag.setup
+# ── Pre-build FAISS vector store if not present ───────────────────────────────
+if [ ! -d "./rag_store" ]; then
+  echo "Building RAG vector store (first-time, ~20 s) ..."
+  $PY -m rag.setup
+  echo "RAG store ready."
 fi
 
-# ── Launch Streamlit ────────────────────────────────────────────────────────
-PORT="${PORT:-8501}"
+# ── Launch ────────────────────────────────────────────────────────────────────
 echo ""
-echo "Starting ValoraAI on http://localhost:$PORT"
+echo "Starting ValoraAI on http://localhost:${PORT}"
+echo "Press Ctrl+C to stop."
 echo ""
-$STREAMLIT run app/app.py \
+
+$PY -m streamlit run app/app.py \
   --server.port "$PORT" \
   --server.headless false \
   --server.address localhost

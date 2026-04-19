@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: valoraai-price-predictor
+    env: python
+    plan: free
+    rootDir: .
+    buildCommand: >
+      git lfs pull &&
+      pip install -r deployment/requirements.txt &&
+      python -m rag.setup
+    startCommand: >
+      streamlit run app/app.py
+      --server.port $PORT
+      --server.address 0.0.0.0
+      --server.headless true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GROQ_API_KEY
+        sync: false          # Set this as a secret in the Render dashboard
+      - key: CHAT_API_URL
+        value: ""            # Set to Param's backend URL when deployed (e.g. https://chat-api.onrender.com/chat)
