@@ -6,8 +6,7 @@ services:
     rootDir: .
     buildCommand: >
       pip install -r deployment/requirements.txt &&
-      python scripts/download_models.py &&
-      python -m rag.setup
+      python scripts/download_models.py
     startCommand: >
       streamlit run app/app.py 
       --server.port $PORT 
