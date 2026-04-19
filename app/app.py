@@ -9,7 +9,6 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-# Load .env early so every os.environ.get() sees the values
 from dotenv import load_dotenv
 load_dotenv(os.path.join(_PROJECT_ROOT, ".env"))
 
@@ -28,10 +27,19 @@ st.markdown("""
     .block-container { max-width: 1200px !important; padding-top: 2rem !important; margin: 0 auto !important; }
 
     /* Brand */
-    .brand-section { text-align: center; margin-bottom: 3rem; }
+    .brand-section { text-align: center; margin-bottom: 2.5rem; }
     .brand-title { font-size: 2.8rem; font-weight: 800; color: #F59E0B; margin: 0; letter-spacing: -1px; }
     .brand-subtitle { color: #64748B; font-size: 1rem; margin-top: 5px; }
 
+    /* Theme the strictly native sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #FFFFFF !important;
+        border-right: 1px solid #E2E8F0 !important;
+    }
+    .stSidebarNav {
+        padding-top: 2rem !important;
+    }
+    
     /* Cards */
     .content-card  { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 2.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 2rem; }
     .advisory-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 2.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 2rem; }
@@ -52,7 +60,6 @@ st.markdown("""
         -webkit-text-fill-color: #000000 !important;
         border: 1px solid #CBD5E1 !important;
     }
-    input::placeholder { color: #475569 !important; opacity: 1 !important; }
 
     /* Buttons */
     div[data-testid="stButton"] > button {
@@ -119,7 +126,6 @@ st.markdown("""
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Maps UI display values → model training labels (from mayaai_sale_features.pkl)
 _PROPERTY_TYPE_MAP = {
     "apartment":         "residential apartment",
     "independent house": "independent house/villa",
@@ -132,25 +138,16 @@ def formInr(amount):
     elif amount >= 100_000:  return f"₹ {amount/100_000:.2f} Lac"
     return f"₹ {amount:,.0f}"
 
-
 @st.cache_resource
 def get_the_model():
-    search_bases = [
-        os.path.join(_PROJECT_ROOT, "models"),
-        _PROJECT_ROOT,
-        "models",
-        ".",
-    ]
+    search_bases = [os.path.join(_PROJECT_ROOT, "models"), _PROJECT_ROOT, "models", "."]
     for base in search_bases:
         m = os.path.join(base, "mayaai_sale_rf_model.pkl")
         f = os.path.join(base, "mayaai_sale_features.pkl")
         if os.path.exists(m) and os.path.exists(f):
-            try:
-                return joblib.load(m), joblib.load(f)
-            except Exception:
-                continue
+            try: return joblib.load(m), joblib.load(f)
+            except Exception: continue
     return None, None
-
 
 @st.cache_resource(show_spinner=False)
 def get_agent():
@@ -164,9 +161,7 @@ def get_agent():
 
 _WELCOME = (
     "Welcome to **ValoraAI** 🏠 I can answer questions about property prices, "
-    "market trends, and investment strategy for any Indian metro — or generate a full "
-    "**BUY / HOLD / SELL advisory report** for the property you've entered. "
-    "What would you like to know?"
+    "market trends, and investment strategy for any Indian metro! What would you like to know?"
 )
 
 for _key, _default in [
@@ -181,11 +176,6 @@ for _key, _default in [
     if _key not in st.session_state:
         st.session_state[_key] = _default
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Sample preset loader
-# ─────────────────────────────────────────────────────────────────────────────
-
 def do_the_sample(city, loc, ptype, area, beds, baths, balconies, floor, total, age, furnish):
     st.session_state.form_data = {
         "city": city, "loc": loc, "ptype": ptype, "area": area,
@@ -195,47 +185,28 @@ def do_the_sample(city, loc, ptype, area, beds, baths, balconies, floor, total, 
     st.session_state.prediction_shown = False
     st.session_state.advisory_shown   = False
     st.session_state.report_html      = ""
-    st.rerun()
+    # st.rerun() handles correctly in the page context
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Sidebar Navigation
-# ─────────────────────────────────────────────────────────────────────────────
-
-with st.sidebar:
-    st.markdown("<h2 style='color: #F59E0B; margin-bottom: 2rem;'>Valora Menu</h2>", unsafe_allow_html=True)
-    page = st.radio(
-        "Navigation", 
-        ["📊 Predictive ML Model", "🤖 AI Real Estate Agent"], 
-        label_visibility="collapsed"
-    )
-    st.markdown("---")
-    st.markdown("<p style='font-size:0.8rem; color:#64748B;'>Select <b>Predictive ML Model</b> to get a property valuation. Select <b>AI Real Estate Agent</b> to generate analytical reports and converse with Valora.</p>", unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Header
-# ─────────────────────────────────────────────────────────────────────────────
-
-st.markdown(
-    "<div class='brand-section'><h1 class='brand-title'>ValoraAI</h1>"
-    "<p class='brand-subtitle'>Advanced Property Valuation Engine for Indian Markets</p></div>",
-    unsafe_allow_html=True,
-)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE 1: Predictive ML Model
 # ─────────────────────────────────────────────────────────────────────────────
-
-if page == "📊 Predictive ML Model":
+def page_ml_model():
+    st.markdown(
+        "<div class='brand-section'><h1 class='brand-title'>ValoraAI Valuation Engine</h1>"
+        "<p class='brand-subtitle'>Advanced Property Price Prediction for Indian Markets</p></div>",
+        unsafe_allow_html=True,
+    )
 
     col_s1, col_s2 = st.columns(2)
     with col_s1:
         if st.button("Load Gurgaon Sample"):
             do_the_sample("gurgaon", "dlf phase 1", "Apartment", 2400, 3, 3, 2, 5, 12, 4, "Semi-furnished")
+            st.rerun()
     with col_s2:
         if st.button("Load South Bombay Sample"):
             do_the_sample("mumbai", "malabar hill", "Apartment", 3200, 4, 5, 3, 18, 30, 3, "Furnished")
+            st.rerun()
 
     st.markdown("<div class='content-card'>", unsafe_allow_html=True)
     col_inputs, col_results = st.columns([1.1, 0.9], gap="large")
@@ -273,7 +244,6 @@ if page == "📊 Predictive ML Model":
             f_idx     = furnishes.index(d.get("furnish")) if d.get("furnish") in furnishes else 1
             furnish   = st.selectbox("Furnishing", furnishes, index=f_idx, key="furn_select")
 
-        # Save to state dynamically when Generate is clicked
         if st.button("Generate Valuation Analysis", type="primary"):
             st.session_state.form_data = {
                 "city": u_city, "loc": u_loc, "ptype": property_type_ui, "area": area_sqft,
@@ -287,7 +257,6 @@ if page == "📊 Predictive ML Model":
     with col_results:
         if st.session_state.prediction_shown:
             loaded_model, dataset_features = get_the_model()
-            # Fetch from state
             d_s = st.session_state.form_data
             if loaded_model is not None and dataset_features is not None:
                 try:
@@ -345,13 +314,14 @@ if page == "📊 Predictive ML Model":
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE 2: AI Agent & Chat
 # ─────────────────────────────────────────────────────────────────────────────
+def page_ai_agent():
+    st.markdown(
+        "<div class='brand-section'><h1 class='brand-title'>Valora Real Estate Agent</h1>"
+        "<p class='brand-subtitle'>Market Research & Converse with Valora</p></div>",
+        unsafe_allow_html=True,
+    )
 
-elif page == "🤖 AI Real Estate Agent":
-
-    if not st.session_state.prediction_shown:
-        st.warning("Please generate a property valuation on the 'Predictive ML Model' page first so Valora has a property to analyze!")
-    else:
-        # Load details from session state exactly as generated
+    if st.session_state.prediction_shown:
         d_s = st.session_state.form_data
 
         st.markdown("<div class='advisory-card'>", unsafe_allow_html=True)
@@ -363,7 +333,7 @@ elif page == "🤖 AI Real Estate Agent":
 
         current_key = f"{d_s.get('city')}|{d_s.get('loc')}|{d_s.get('ptype')}|{d_s.get('beds')}|{d_s.get('area')}"
 
-        if st.button("Generate AI Advisory Report", type="primary"):
+        if st.button("Generate Detailed Advisory Report", type="primary"):
             with st.spinner("Retrieving market data and generating advisory…"):
                 agent = get_agent()
                 result = agent.invoke({
@@ -391,7 +361,7 @@ elif page == "🤖 AI Real Estate Agent":
 
         if st.session_state.advisory_shown and st.session_state.report_html:
             if st.session_state.advisory_property_key != current_key:
-                st.info("Property details changed. Click 'Generate AI Advisory Report' to refresh.")
+                st.info("Property details changed. Click 'Generate Detailed Advisory Report' to refresh.")
             st.markdown(st.session_state.report_html, unsafe_allow_html=True)
             st.download_button(
                 "📥 Download Report",
@@ -399,94 +369,93 @@ elif page == "🤖 AI Real Estate Agent":
                 file_name="valora_advisory_report.html",
                 mime="text/html",
             )
-
         st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.info("💡 **Hint**: If you validate a property on the **Predictive ML Model** page first, you can generate a structured, full-scale investment report right here!")
 
-        # Chat with Valora
-        st.markdown("<div class='chat-card'>", unsafe_allow_html=True)
-        st.markdown(
-            "<div class='card-title'>Chat with Valora</div>"
-            "<div class='card-sub'>"
-            "Ask about prices, trends, or investment strategy — or type <em>\"generate report\"</em> "
-            "for a full BUY/HOLD/SELL advisory on the property"
-            "</div>",
-            unsafe_allow_html=True,
-        )
+    # Chat with Valora ALWAYS available!
+    st.markdown("<div class='chat-card'>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='card-title'>Chat with Valora</div>"
+        "<div class='card-sub'>"
+        "Enter property details manually, ask about micro-markets, or get structural investment advice."
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
-        for msg in st.session_state.chat_messages:
-            avatar = "🏠" if msg["role"] == "assistant" else "👤"
-            with st.chat_message(msg["role"], avatar=avatar):
-                if msg.get("is_html"):
-                    st.markdown(msg["content"], unsafe_allow_html=True)
-                    st.download_button(
-                        "📥 Download Report",
-                        data=msg["content"],
-                        file_name="valora_advisory_report.html",
-                        mime="text/html",
-                        key=f"dl_hist_{st.session_state.chat_messages.index(msg)}",
-                    )
-                else:
-                    st.markdown(msg["content"])
+    for msg in st.session_state.chat_messages:
+        avatar = "🏠" if msg["role"] == "assistant" else "👤"
+        with st.chat_message(msg["role"], avatar=avatar):
+            if msg.get("is_html"):
+                st.markdown(msg["content"], unsafe_allow_html=True)
+                st.download_button(
+                    "📥 Download Report",
+                    data=msg["content"],
+                    file_name="valora_advisory_report.html",
+                    mime="text/html",
+                    key=f"dl_hist_{st.session_state.chat_messages.index(msg)}",
+                )
+            else:
+                st.markdown(msg["content"])
 
-        if user_input := st.chat_input("Ask about property prices, market trends, or investment strategy…"):
+    if user_input := st.chat_input("E.g. What's the average price for a 3BHK in Gurgaon Sector 56?"):
 
-            with st.chat_message("user", avatar="👤"):
-                st.markdown(user_input)
-            st.session_state.chat_messages.append({"role": "user", "content": user_input, "is_html": False})
+        with st.chat_message("user", avatar="👤"):
+            st.markdown(user_input)
+        st.session_state.chat_messages.append({"role": "user", "content": user_input, "is_html": False})
 
-            property_ctx = None
-            if st.session_state.prediction_shown and st.session_state.last_price > 0:
-                property_ctx = {
-                    "details": {
-                        "city":          d_s.get("city", "mumbai").strip(),
-                        "locality":      d_s.get("loc", "bandra").strip(),
-                        "property_type": d_s.get("ptype", "Apartment"),
-                        "bedrooms":      int(d_s.get("beds", 2)),
-                        "bathrooms":     int(d_s.get("baths", 2)),
-                        "balconies":     int(d_s.get("balconies", 1)),
-                        "area_sqft":     int(d_s.get("area", 1200)),
-                        "floor_num":     int(d_s.get("floor", 3)),
-                        "total_floors":  int(d_s.get("total", 10)),
-                        "age_years":     int(d_s.get("age", 5)),
-                        "furnishing":    d_s.get("furnish", "Semi-furnished"),
-                    },
-                    "prediction": float(st.session_state.last_price),
-                }
+        property_ctx = None
+        if st.session_state.prediction_shown and st.session_state.last_price > 0:
+            d_s = st.session_state.form_data
+            property_ctx = {
+                "details": {
+                    "city":          d_s.get("city", "mumbai").strip(),
+                    "locality":      d_s.get("loc", "bandra").strip(),
+                    "property_type": d_s.get("ptype", "Apartment"),
+                    "bedrooms":      int(d_s.get("beds", 2)),
+                },
+                "prediction": float(st.session_state.last_price),
+            }
 
-            with st.chat_message("assistant", avatar="🏠"):
-                with st.spinner("Valora is thinking…"):
-                    from chat_backend import get_chat_response
-                    reply = get_chat_response(
-                        user_message    = user_input,
-                        history_before  = st.session_state.chat_messages[:-1],
-                        property_context= property_ctx,
-                    )
+        with st.chat_message("assistant", avatar="🏠"):
+            with st.spinner("Valora is thinking…"):
+                from chat_backend import get_chat_response
+                reply = get_chat_response(
+                    user_message    = user_input,
+                    history_before  = st.session_state.chat_messages[:-1],
+                    property_context= property_ctx,
+                )
 
-                if reply["is_html"]:
-                    st.markdown(reply["content"], unsafe_allow_html=True)
-                    st.download_button(
-                        "📥 Download Report",
-                        data=reply["content"],
-                        file_name="valora_advisory_report.html",
-                        mime="text/html",
-                        key=f"dl_new_{len(st.session_state.chat_messages)}",
-                    )
-                else:
-                    st.markdown(reply["content"])
+            if reply["is_html"]:
+                st.markdown(reply["content"], unsafe_allow_html=True)
+                st.download_button(
+                    "📥 Download Report",
+                    data=reply["content"],
+                    file_name="valora_advisory_report.html",
+                    mime="text/html",
+                    key=f"dl_new_{len(st.session_state.chat_messages)}",
+                )
+            else:
+                st.markdown(reply["content"])
 
-            st.session_state.chat_messages.append({
-                "role":    "assistant",
-                "content": reply["content"],
-                "is_html": reply["is_html"],
-            })
+        st.session_state.chat_messages.append({
+            "role":    "assistant",
+            "content": reply["content"],
+            "is_html": reply["is_html"],
+        })
 
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Routing via st.navigation (Streamlit 1.36+)
+# ─────────────────────────────────────────────────────────────────────────────
+pg = st.navigation([
+    st.Page(page_ml_model, title="Predictive ML Model", icon="📊", default=True),
+    st.Page(page_ai_agent, title="AI Real Estate Agent", icon="🤖"),
+])
+
+pg.run()
+
 # Footer
-# ─────────────────────────────────────────────────────────────────────────────
-st.markdown(
-    "<div class='footer'>ValoraAI Professional Real Estate Analytics Engine &copy; 2026</div>",
-    unsafe_allow_html=True,
-)
+st.markdown("<div class='footer'>ValoraAI Professional Real Estate Analytics Engine &copy; 2026</div>", unsafe_allow_html=True)

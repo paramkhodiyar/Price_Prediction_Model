@@ -43,7 +43,7 @@ PY="$VENV_DIR/bin/python"
 # ── Install / sync dependencies ───────────────────────────────────────────────
 echo "Syncing dependencies ..."
 $PIP install --quiet \
-  "streamlit==1.35.0" \
+  "streamlit>=1.36.0" \
   "pandas==2.2.2" \
   "numpy<2" \
   "scikit-learn==1.6.1" \
