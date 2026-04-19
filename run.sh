@@ -11,10 +11,12 @@ VENV_DIR="./venv"
 
 # ── Find a compatible Python (3.9–3.12; NOT 3.13/3.14 — protobuf breaks) ────
 find_python() {
-  for candidate in python3.12 python3.11 python3.10 python3.9; do
+  for candidate in python3.12 python3.11 python3.10 python3.9 python3 python /usr/bin/python3; do
     if command -v "$candidate" &>/dev/null; then
-      echo "$candidate"
-      return
+      if "$candidate" -c 'import sys; sys.exit(0 if sys.version_info[:2] in [(3,9), (3,10), (3,11), (3,12)] else 1)' &>/dev/null; then
+        echo "$candidate"
+        return
+      fi
     fi
   done
   echo ""
