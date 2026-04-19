@@ -9,10 +9,12 @@ services:
       pip install -r deployment/requirements.txt &&
       python -m rag.setup
     startCommand: >
-      streamlit run app/app.py
-      --server.port $PORT
-      --server.address 0.0.0.0
-      --server.headless true
+      streamlit run app/app.py 
+      --server.port $PORT 
+      --server.address 0.0.0.0 
+      --server.headless true 
+      --server.enableCORS false 
+      --server.enableXsrfProtection false
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
