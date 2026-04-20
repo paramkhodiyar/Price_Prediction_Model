@@ -4,8 +4,6 @@ No external endpoint, no CORS, no iframe.
 """
 
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-
-# Keywords that trigger a full advisory report via the LangGraph agent
 _REPORT_TRIGGERS = {
     "advisory", "report", "analyse", "analyze", "verdict",
     "should i buy", "should i sell", "should i invest",
