@@ -38,6 +38,52 @@ def _parse(raw: str) -> dict:
         }
 
 
+def _parse_market_bullets_to_table(market_ctx: str) -> str:
+    """Convert RAG bullet points into a structured HTML table."""
+    if not market_ctx:
+        return ""
+    
+    bullets = [b.strip("• ").strip() for b in market_ctx.split("\n") if b.strip()]
+    if not bullets:
+        return ""
+
+    rows = ""
+    for bullet in bullets:
+        parts = bullet.split(",")
+        # Rough heuristic to extract location and price
+        # Bullet format: "In [City] [Locality] in [Year], [BHK][Type]s averaged [Price] [Unit] [Detail]"
+        try:
+            loc_and_year = parts[0].replace("In ", "").strip()
+            price_info = parts[1].strip() if len(parts) > 1 else bullet
+            
+            rows += f"""
+            <tr style="border-bottom:1px solid #F1F5F9;">
+                <td style="padding:0.75rem 0.5rem;color:#1E293B;font-weight:500;">{loc_and_year}</td>
+                <td style="padding:0.75rem 0.5rem;color:#059669;font-weight:600;">{price_info}</td>
+            </tr>"""
+        except Exception:
+            rows += f"""
+            <tr style="border-bottom:1px solid #F1F5F9;">
+                <td colspan="2" style="padding:0.75rem 0.5rem;color:#475569;">{bullet}</td>
+            </tr>"""
+
+    return f"""
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:1.5rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size:0.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem;">COMPARABLE PROPERTY ANALYSIS</div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+            <thead>
+                <tr style="text-align:left;border-bottom:2px solid #F1F5F9;">
+                    <th style="padding:0.5rem;color:#64748B;font-weight:600;">Location & Context</th>
+                    <th style="padding:0.5rem;color:#64748B;font-weight:600;">Market Insight</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows}
+            </tbody>
+        </table>
+    </div>"""
+
+
 def format_report(agent_output_json: str) -> str:
     """
     Convert the LLM JSON advice string into a styled HTML advisory report.
@@ -45,8 +91,9 @@ def format_report(agent_output_json: str) -> str:
     Sections:
       1. Valuation Summary
       2. Market Context & Analysis
-      3. Verdict (color-coded: green=BUY, yellow=HOLD, red=SELL)
-      4. Disclaimer
+      3. Comparable Property Analysis (Table)
+      4. Verdict (color-coded: green=BUY, yellow=HOLD, red=SELL)
+      5. Disclaimer
     """
     data = _parse(agent_output_json)
 
@@ -62,13 +109,7 @@ def format_report(agent_output_json: str) -> str:
     style = _VERDICT_STYLES.get(verdict, _VERDICT_STYLES["HOLD"])
     risk_color = _RISK_COLORS.get(risk, _RISK_COLORS["MEDIUM"])
 
-    market_section = ""
-    if market_ctx:
-        market_section = f"""
-  <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:1.5rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-    <div style="font-size:0.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.75rem;">COMPARABLE MARKET DATA (RAG)</div>
-    <p style="color:#475569;font-size:0.88rem;line-height:1.7;margin:0;white-space:pre-line;">{market_ctx}</p>
-  </div>"""
+    market_table = _parse_market_bullets_to_table(market_ctx)
 
     return f"""
 <div style="font-family:'Public Sans',sans-serif;max-width:780px;margin:0 auto;">
@@ -81,11 +122,11 @@ def format_report(agent_output_json: str) -> str:
 
   <!-- 2. Market Context & Analysis -->
   <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:1.5rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-    <div style="font-size:0.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.75rem;">MARKET CONTEXT &amp; ANALYSIS</div>
+    <div style="font-size:0.72rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.75rem;">ADVISORY INSIGHTS</div>
     <p style="color:#1E293B;font-size:0.95rem;line-height:1.6;margin:0;">{reason}</p>
   </div>
 
-  {market_section}
+  {market_table}
 
   <!-- 3. Verdict -->
   <div style="background:{style['bg']};border:2px solid {style['border']};border-radius:12px;padding:1.5rem;margin-bottom:1rem;">

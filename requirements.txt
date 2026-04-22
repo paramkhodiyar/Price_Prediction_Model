@@ -10,5 +10,6 @@ langgraph
 langchain-groq
 langchain-community
 langchain-core
+langchain-huggingface
 faiss-cpu
 sentence-transformers

@@ -1,9 +1,19 @@
-"""
-RAG retrieval — keyword-based matching against curated market sentences.
-No sentence-transformers or FAISS loaded at runtime; saves ~100 MB RAM.
-"""
+import os
+from pathlib import Path
+from rag.setup import SAMPLE_SENTENCES, RAG_STORE_PATH, EMBEDDING_MODEL
 
-from rag.setup import SAMPLE_SENTENCES
+# Global cache for the vector store to avoid reloading on every request
+_VECTORSTORE = None
+
+def _get_vectorstore():
+    global _VECTORSTORE
+    if _VECTORSTORE is None:
+        if os.path.exists(RAG_STORE_PATH):
+            from langchain_community.vectorstores import FAISS
+            from langchain_huggingface import HuggingFaceEmbeddings
+            embedder = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+            _VECTORSTORE = FAISS.load_local(RAG_STORE_PATH, embedder, allow_dangerous_deserialization=True)
+    return _VECTORSTORE
 
 _CITY_ALIASES = {
     "delhi": ["delhi", "ncr", "dwarka", "rohini", "janakpuri", "saket", "lajpat"],
@@ -25,47 +35,52 @@ _CITY_ALIASES = {
     "chennai": ["chennai", "madras", "anna nagar", "omr", "adyar", "velachery", "porur"],
 }
 
-_PROP_KEYWORDS = {
-    "apartment": ["apartment", "flat", "bhk"],
-    "villa": ["villa", "independent house"],
-    "penthouse": ["penthouse"],
-    "studio": ["studio"],
-}
-
-
-def _city_score(sentence: str, city: str) -> int:
-    s = sentence.lower()
-    city_l = city.lower()
-    aliases = _CITY_ALIASES.get(city_l, [city_l])
-    return sum(1 for a in aliases if a in s)
-
-
-def _prop_score(sentence: str, property_type: str) -> int:
-    s = sentence.lower()
-    pt = property_type.lower()
-    keywords = _PROP_KEYWORDS.get(pt, [pt])
-    return sum(1 for k in keywords if k in s)
-
+def _keyword_search_fallback(city: str, property_type: str, bedrooms: int) -> str:
+    """Fallback keyword matching if FAISS is not available."""
+    city = (city or "").lower().strip()
+    pt = (property_type or "").lower().strip()
+    
+    scored = []
+    for s in SAMPLE_SENTENCES:
+        score = 0
+        s_lower = s.lower()
+        
+        # City/Alias match
+        aliases = _CITY_ALIASES.get(city, [city])
+        if any(a in s_lower for a in aliases):
+            score += 3
+            
+        # Property type match
+        if pt in s_lower:
+            score += 1
+            
+        # Bedrooms match
+        if f"{bedrooms}bhk" in s_lower.replace(" ", ""):
+            score += 2
+            
+        if score > 0:
+            scored.append((score, s))
+            
+    scored.sort(key=lambda x: -x[0])
+    top = [s for _, s in scored[:4]]
+    return "\n".join(f"• {s}" for s in top)
 
 def get_market_context(city: str, property_type: str, bedrooms: int) -> str:
     """
-    Return top-4 market context sentences for the given property query.
-    Uses keyword matching — no ML models loaded at runtime.
+    Return market context sentences using FAISS vector similarity search.
+    Falls back to keyword matching if the vector store is not found.
     """
-    city = (city or "").strip()
-    scored = []
-    for s in SAMPLE_SENTENCES:
-        score = _city_score(s, city) * 3 + _prop_score(s, property_type)
-        if f"{bedrooms}BHK" in s or f"{bedrooms} BHK" in s:
-            score += 2
-        scored.append((score, s))
-
-    scored.sort(key=lambda x: -x[0])
-    top = [s for _, s in scored[:4] if _ > 0]
-
-    # Pad with generic trend sentences if not enough city-specific results
-    if len(top) < 3:
-        trend = [s for s in SAMPLE_SENTENCES if "2023" in s and city.lower() not in s.lower()]
-        top += trend[:4 - len(top)]
-
-    return "\n".join(f"• {s}" for s in top[:4])
+    query = f"Real estate market trends for {bedrooms}BHK {property_type} in {city} in 2023"
+    
+    vs = _get_vectorstore()
+    if vs:
+        try:
+            # Search for similar market data points
+            docs = vs.similarity_search(query, k=4)
+            if docs:
+                return "\n".join(f"• {doc.page_content}" for doc in docs)
+        except Exception:
+            pass
+            
+    # Fallback if FAISS fails or store is missing
+    return _keyword_search_fallback(city, property_type, bedrooms)

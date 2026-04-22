@@ -143,19 +143,45 @@ def format_report(state: AgentState) -> AgentState:
     return state
 
 
+def validate_output(state: AgentState):
+    """Conditional edge: check if the advice is valid JSON and has required fields."""
+    import json
+    try:
+        raw = state.get("advice", "").strip()
+        if raw.startswith("```"):
+            parts = raw.split("```")
+            raw = parts[1][4:].strip() if parts[1].startswith("json") else parts[1].strip()
+        data = json.loads(raw)
+        if all(k in data for k in ["verdict", "reason", "risk"]):
+            return "format_report"
+    except Exception:
+        pass
+    return "generate_advice"  # Retry if invalid
+
+
 workflow = StateGraph(AgentState)
 
-workflow.add_node("analyze_property",      analyze_property)
-workflow.add_node("fetch_prediction",      fetch_prediction)
-workflow.add_node("retrieve_market_context", retrieve_market_context)
-workflow.add_node("generate_advice",       generate_advice)
-workflow.add_node("format_report",         format_report)
+workflow.add_node("analyze_property",        analyze_property)
+workflow.add_node("fetch_prediction",        fetch_prediction)
+workflow.add_node("retrieve_market_context",   retrieve_market_context)
+workflow.add_node("generate_advice",         generate_advice)
+workflow.add_node("format_report",           format_report)
 
-workflow.add_edge(START,                    "analyze_property")
-workflow.add_edge("analyze_property",       "fetch_prediction")
-workflow.add_edge("fetch_prediction",       "retrieve_market_context")
-workflow.add_edge("retrieve_market_context", "generate_advice")
-workflow.add_edge("generate_advice",        "format_report")
-workflow.add_edge("format_report",          END)
+workflow.add_edge(START,                      "analyze_property")
+workflow.add_edge("analyze_property",         "fetch_prediction")
+workflow.add_edge("fetch_prediction",         "retrieve_market_context")
+workflow.add_edge("retrieve_market_context",   "generate_advice")
+
+# The "Agentic" part: Conditional routing for autonomous verification
+workflow.add_conditional_edges(
+    "generate_advice",
+    validate_output,
+    {
+        "format_report": "format_report",
+        "generate_advice": "generate_advice"
+    }
+)
+
+workflow.add_edge("format_report",            END)
 
 valora_app = workflow.compile()
