@@ -17,7 +17,7 @@ In Milestone 2, we transformed ValoraAI from a static price prediction tool into
 
 ### Key Achievements
 - **Multi-Page Architecture:** Upgraded to Streamlit's native `st.navigation` to create a seamless separation between the ML quantitative model and the AI qualitative advisory agent.
-- **RAG-Powered Market Context:** Integrated an offline **FAISS Vector Store** to securely retrieve semantic market comparables and historical pricing trends specific to the user's city and property type, bypassing traditional DB lookups.
+- **RAG-Powered Market Context:** Integrated an offline **FAISS Vector Store** (Facebook AI similarity search )to securely retrieve semantic market comparables and historical pricing trends specific to the user's city and property type, bypassing traditional DB lookups.
 - **Agentic State Machine Orchestration:** Replaced linear scripting with a deeply nested **LangGraph State Graph**, passing robust evaluation payloads (predictions, contexts, traits) securely between validation, retrieval, logic, and formatting nodes.
 - **Strict Domain Grounding:** Architected absolute firewall instructions directly into the base **Groq Llama 3** Large Language Model to permanently restrict the AI from fulfilling non-real-estate prompts (e.g. coding, trivia), thereby ensuring absolute hallucination-free compliance.
 - **Deployment & Cloud Memory Optimization:** Designed an ephemeral lazy-loading system using `@st.cache_resource` for the `sentence-transformers` embedding models to ensure Render's 512MB RAM free-tier infrastructure boots smoothly without OOM timeouts.
